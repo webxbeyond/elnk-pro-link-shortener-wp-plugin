@@ -1,0 +1,84 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.1)'
+        required: true
+        type: string
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+      - name: Update version numbers
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          echo "Updating version to: $VERSION"
+          
+          # Update main plugin file
+          sed -i "s/Version: .*/Version: $VERSION/" elnk-pro-shortener.php
+          
+          # Update README.txt
+          sed -i "s/Stable tag: .*/Stable tag: $VERSION/" README.txt
+          
+          echo "Version numbers updated"
+          
+      - name: Commit changes
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git add elnk-pro-shortener.php README.txt
+          git commit -m "Bump version to $VERSION"
+          git push
+          
+      - name: Create tag
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git tag -a "$VERSION" -m "Release version $VERSION"
+          git push origin "$VERSION"
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          name: Release ${{ github.event.inputs.version }}
+          body: |
+            ## Release ${{ github.event.inputs.version }}
+            
+            ### Changes
+            - Please update this section with the actual changes made in this release
+            
+            ### Installation
+            Download from [WordPress.org](https://wordpress.org/plugins/elnk-pro-shortener/) or install directly from your WordPress admin.
+            
+            ### Requirements
+            - WordPress 5.0+
+            - PHP 7.4+
+            - Active elnk.pro account
+            
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

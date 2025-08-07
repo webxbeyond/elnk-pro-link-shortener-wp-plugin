@@ -1,0 +1,43 @@
+# Directories
+/.git
+/.github
+/node_modules
+/tests
+/vendor
+
+# Files
+.gitignore
+.distignore
+.eslintrc.js
+.phpcs.xml
+.phpunit.result.cache
+composer.json
+composer.lock
+package.json
+package-lock.json
+phpunit.xml
+webpack.config.js
+gulpfile.js
+Gruntfile.js
+tsconfig.json
+
+# Documentation (keep only README.txt for WordPress.org)
+DEPLOYMENT.md
+THEME_PLUGIN_INTEGRATION.md
+
+# Development files
+*.log
+*.bak
+*~
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp

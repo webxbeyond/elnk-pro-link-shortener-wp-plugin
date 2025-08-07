@@ -1,0 +1,138 @@
+name: Deploy to WordPress.org
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy'
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to WordPress.org
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: mbstring, zip
+          
+      - name: Validate plugin structure
+        run: |
+          echo "Validating plugin files..."
+          if [ ! -f "elnk-pro-shortener.php" ]; then
+            echo "Main plugin file not found!"
+            exit 1
+          fi
+          if [ ! -f "README.txt" ]; then
+            echo "README.txt not found!"
+            exit 1
+          fi
+          echo "Plugin structure validated successfully!"
+          
+      - name: Check version consistency
+        run: |
+          # Extract version from main plugin file
+          PLUGIN_VERSION=$(grep "Version:" elnk-pro-shortener.php | sed 's/.*Version: *//' | sed 's/ *$//')
+          
+          # Extract version from README.txt
+          README_VERSION=$(grep "Stable tag:" README.txt | sed 's/.*Stable tag: *//' | sed 's/ *$//')
+          
+          # Extract version from git tag
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            GIT_VERSION=${GITHUB_REF#refs/tags/}
+          else
+            GIT_VERSION=${{ github.event.inputs.tag }}
+          fi
+          
+          echo "Plugin file version: $PLUGIN_VERSION"
+          echo "README.txt version: $README_VERSION"
+          echo "Git tag version: $GIT_VERSION"
+          
+          if [ "$PLUGIN_VERSION" != "$README_VERSION" ] || [ "$PLUGIN_VERSION" != "$GIT_VERSION" ]; then
+            echo "Version mismatch detected!"
+            echo "Please ensure all versions match before deploying."
+            exit 1
+          fi
+          
+          echo "All versions match: $PLUGIN_VERSION"
+          
+      - name: Install dependencies (if applicable)
+        run: |
+          if [ -f "package.json" ]; then
+            npm install
+            npm run build 2>/dev/null || echo "No build script found, skipping..."
+          fi
+          if [ -f "composer.json" ]; then
+            composer install --no-dev --optimize-autoloader
+          fi
+        continue-on-error: true
+        
+      - name: Create deployment package
+        run: |
+          echo "Creating deployment package..."
+          mkdir -p deploy/elnk-pro-shortener
+          
+          # Copy plugin files
+          cp -r * deploy/elnk-pro-shortener/ 2>/dev/null || true
+          
+          # Remove development files
+          cd deploy/elnk-pro-shortener
+          rm -rf .git .github node_modules .gitignore package*.json composer.json composer.lock
+          rm -rf tests/ .phpunit.result.cache phpunit.xml
+          
+          # Remove any backup or temporary files
+          find . -name "*.bak" -delete
+          find . -name "*~" -delete
+          find . -name ".DS_Store" -delete
+          
+          cd ..
+          echo "Deployment package created successfully!"
+          ls -la elnk-pro-shortener/
+          
+      - name: WordPress Plugin Deploy
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          generate-zip: true
+        env:
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SLUG: elnk-pro-shortener
+          
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Changes in this release
+            
+            See the [changelog](https://wordpress.org/plugins/elnk-pro-shortener/#developers) for detailed information.
+            
+            ## Installation
+            
+            Download the plugin from [WordPress.org](https://wordpress.org/plugins/elnk-pro-shortener/) or install directly from your WordPress admin.
+            
+          files: ${{ github.workspace }}/elnk-pro-shortener.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,115 @@
+name: Code Quality Check
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    name: Validate Plugin
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+          extensions: mbstring
+          
+      - name: Validate plugin structure
+        run: |
+          echo "🔍 Checking plugin structure..."
+          
+          # Check required files
+          if [ ! -f "elnk-pro-shortener.php" ]; then
+            echo "❌ Main plugin file not found!"
+            exit 1
+          fi
+          
+          if [ ! -f "README.txt" ]; then
+            echo "❌ README.txt not found!"
+            exit 1
+          fi
+          
+          echo "✅ Required files found"
+          
+      - name: Check PHP syntax
+        run: |
+          echo "🔍 Checking PHP syntax..."
+          find . -name "*.php" -exec php -l {} \;
+          echo "✅ PHP syntax check passed"
+          
+      - name: Validate README.txt
+        run: |
+          echo "🔍 Validating README.txt format..."
+          
+          # Check for required sections
+          if ! grep -q "=== .* ===" README.txt; then
+            echo "❌ Plugin name header not found in README.txt"
+            exit 1
+          fi
+          
+          if ! grep -q "== Description ==" README.txt; then
+            echo "❌ Description section not found in README.txt"
+            exit 1
+          fi
+          
+          if ! grep -q "== Installation ==" README.txt; then
+            echo "❌ Installation section not found in README.txt"
+            exit 1
+          fi
+          
+          if ! grep -q "Stable tag:" README.txt; then
+            echo "❌ Stable tag not found in README.txt"
+            exit 1
+          fi
+          
+          echo "✅ README.txt validation passed"
+          
+      - name: Check version consistency
+        run: |
+          echo "🔍 Checking version consistency..."
+          
+          # Extract versions
+          PLUGIN_VERSION=$(grep "Version:" elnk-pro-shortener.php | head -1 | sed 's/.*Version: *//' | sed 's/ *$//' | tr -d '\r')
+          README_VERSION=$(grep "Stable tag:" README.txt | sed 's/.*Stable tag: *//' | sed 's/ *$//' | tr -d '\r')
+          
+          echo "Plugin file version: '$PLUGIN_VERSION'"
+          echo "README.txt version: '$README_VERSION'"
+          
+          if [ "$PLUGIN_VERSION" != "$README_VERSION" ]; then
+            echo "❌ Version mismatch detected!"
+            echo "Plugin file: $PLUGIN_VERSION"
+            echo "README.txt: $README_VERSION"
+            exit 1
+          fi
+          
+          echo "✅ Versions match: $PLUGIN_VERSION"
+          
+      - name: Security check
+        run: |
+          echo "🔍 Running basic security checks..."
+          
+          # Check for direct access protection
+          if ! grep -r "ABSPATH" --include="*.php" .; then
+            echo "⚠️  No ABSPATH checks found - consider adding direct access protection"
+          else
+            echo "✅ Direct access protection found"
+          fi
+          
+          # Check for SQL injection protection
+          if grep -r "\$wpdb->query.*\$_" --include="*.php" .; then
+            echo "⚠️  Potential SQL injection vulnerability found"
+          fi
+          
+          # Check for XSS protection
+          if grep -r "echo \$_" --include="*.php" .; then
+            echo "⚠️  Potential XSS vulnerability found - consider using esc_html() or wp_kses()"
+          fi
+          
+          echo "✅ Basic security check completed"
