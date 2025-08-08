@@ -4,7 +4,7 @@ Thank you to all the people who have contributed to the elnk.pro Link Shortener 
 
 ## 👨‍💻 Core Maintainers
 
-- **Anis Afifi** - *Initial development and maintenance*
+- [WebX Beyond](https://github.com/webxbeyond) - *Initial development and maintenance*
 
 ## 🤝 Contributors
 
