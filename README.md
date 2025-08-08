@@ -1,3 +1,15 @@
+# Contributing
+
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
+
+# Contributors
+
+Thanks to all the people who contribute to this project:
+
+<a href="https://github.com/webxbeyond/elnk-pro-link-shortener-wp-plugin/graphs/contributors">
+   <img src="https://contrib.rocks/image?repo=webxbeyond/elnk-pro-link-shortener-wp-plugin" />
+</a>
+
 # Elnk.pro Link Shortener WordPress Plugin
 
 A WordPress plugin that integrates with the elnk.pro API to create short URLs directly from your WordPress admin dashboard.
